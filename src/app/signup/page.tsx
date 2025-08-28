@@ -15,33 +15,59 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
 import Link from 'next/link';
+import { doc, setDoc } from 'firebase/firestore';
 
-export default function LoginPage() {
+export default function SignUpPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const [name, setName] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (password.length < 6) {
+        toast({
+            variant: 'destructive',
+            title: 'Sign Up Failed',
+            description: 'Password must be at least 6 characters long.',
+        });
+        return;
+    }
     setIsSubmitting(true);
 
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Create a user document in Firestore
+      await setDoc(doc(db, 'users', user.uid), {
+        id: user.uid,
+        name: name,
+        email: user.email,
+        role: 'citizen',
+        country: '',
+        ecoPoints: 0,
+        badges: [],
+        profileImage: `https://picsum.photos/seed/${user.uid}/100/100`,
+        contributions: '',
+        ecoProfileDescription: '',
+      });
+
       toast({
-        title: 'Login Successful!',
-        description: 'Welcome back!',
+        title: 'Account Created!',
+        description: "You've successfully signed up.",
       });
       router.push('/dashboard');
     } catch (error: any) {
-      console.error('Error logging in: ', error);
+      console.error('Error signing up: ', error);
       toast({
         variant: 'destructive',
-        title: 'Login Failed',
+        title: 'Sign Up Failed',
         description: error.message || 'An unknown error occurred.',
       });
     } finally {
@@ -54,14 +80,27 @@ export default function LoginPage() {
       <Card className="max-w-md w-full">
         <CardHeader className="text-center">
           <CardTitle className="font-headline text-3xl">
-            Welcome Back
+            Create an Account
           </CardTitle>
           <CardDescription>
-            Sign in to continue to your EcoEcho account.
+            Join EcoEcho and start making a difference today.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-6" onSubmit={handleSubmit}>
+             <div className="space-y-2">
+              <Label htmlFor="name">Full Name</Label>
+              <Input
+                id="name"
+                name="name"
+                type="text"
+                placeholder="John Doe"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={isSubmitting}
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -96,13 +135,13 @@ export default function LoginPage() {
               {isSubmitting && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              {isSubmitting ? 'Signing In...' : 'Sign In'}
+              {isSubmitting ? 'Creating Account...' : 'Sign Up'}
             </Button>
           </form>
           <div className="mt-6 text-center text-sm">
-            Don't have an account?{' '}
-            <Link href="/signup" className="underline hover:text-primary">
-              Sign up
+            Already have an account?{' '}
+            <Link href="/login" className="underline hover:text-primary">
+              Log in
             </Link>
           </div>
         </CardContent>

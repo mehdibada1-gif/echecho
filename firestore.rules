@@ -1,0 +1,55 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // USERS: Can read anyone's profile, but only write to their own.
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if isOwner(userId);
+    }
+    
+    // EVENTS: Anyone can read. Signed-in users can create. Only owners can update/delete.
+    // Any signed-in user can join an event by updating the participants list.
+    match /events/{eventId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && (isOwner(resource.data.createdBy) || request.resource.data.participantsdiff(resource.data.participants).affectedKeys().hasOnly(['participants']));
+      allow delete: if isSignedIn() && isOwner(resource.data.createdBy);
+    }
+    
+    // BLOGS: Anyone can read. Signed-in users can create. Only owners can update/delete.
+    match /blogs/{blogId} {
+        allow read: if true;
+        allow create: if isSignedIn();
+        allow update, delete: if isSignedIn() && isOwner(resource.data.createdBy);
+    }
+    
+    // ORGANIZATIONS: Anyone can read. Signed-in users can create one. Only owners can update/delete.
+    match /organizations/{orgId} {
+        allow read: if true;
+        allow create: if isSignedIn() && isOwner(request.resource.data.ownerId);
+        allow update, delete: if isSignedIn() && isOwner(resource.data.ownerId);
+    }
+    
+    // CHATS: Only participants can read/write to a chat room and its messages.
+    match /chats/{chatId} {
+        allow read, create: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+        allow update: if isSignedIn() && request.auth.uid in resource.data.participantIds;
+
+        match /messages/{messageId} {
+            allow read, create: if isSignedIn() && get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds.hasAny([request.auth.uid]);
+        }
+    }
+  }
+}

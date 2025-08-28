@@ -1,6 +1,7 @@
+
 'use client';
 
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Line, LineChart, Tooltip } from 'recharts';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts';
 import {
   ChartTooltip,
   ChartTooltipContent,
@@ -15,15 +16,6 @@ const chartData = [
   { country: 'Lebanon', contributions: 173 },
   { country: 'Tunisia', contributions: 90 },
   { country: 'Morocco', contributions: 120 },
-];
-
-const timeSeriesData = [
-  { month: "Jan", trees: 30, waste: 20 },
-  { month: "Feb", trees: 45, waste: 35 },
-  { month: "Mar", trees: 60, waste: 50 },
-  { month: "Apr", trees: 70, waste: 65 },
-  { month: "May", trees: 90, waste: 80 },
-  { month: "Jun", trees: 110, waste: 95 },
 ];
 
 export function ImpactCharts() {
@@ -54,28 +46,6 @@ export function ImpactCharts() {
               <Bar dataKey="contributions" fill="var(--color-chart-1)" radius={4} />
             </BarChart>
           </ChartContainer>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-headline">
-            Impact Over Time
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-           <ChartContainer config={{}} className="h-[300px] w-full">
-                <LineChart
-                    data={timeSeriesData}
-                    margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
-                >
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip content={<ChartTooltipContent />} />
-                    <Line type="monotone" dataKey="trees" stroke="var(--color-chart-1)" strokeWidth={2} name="Trees Planted"/>
-                    <Line type="monotone" dataKey="waste" stroke="var(--color-chart-2)" strokeWidth={2} name="Waste Recycled (kg)"/>
-                </LineChart>
-            </ChartContainer>
         </CardContent>
       </Card>
     </div>

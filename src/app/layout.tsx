@@ -1,12 +1,30 @@
+
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-import SiteHeader from '@/components/site-header';
+import { Alegreya, Belleza } from 'next/font/google';
+import { cn } from '@/lib/utils';
+import { AuthContextProvider } from '@/context/auth-context';
+import BottomNav from '@/components/bottom-nav';
+import Header from '@/components/header';
 
 export const metadata: Metadata = {
   title: 'EcoEcho',
   description: 'A Community Sustainability Platform',
 };
+
+const alegreya = Alegreya({
+  subsets: ['latin'],
+  variable: '--font-alegreya',
+  display: 'swap',
+});
+
+const belleza = Belleza({
+  subsets: ['latin'],
+  weight: '400',
+  variable: '--font-belleza',
+  display: 'swap',
+});
 
 export default function RootLayout({
   children,
@@ -15,22 +33,28 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400..900;1,400..900&family=Belleza&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="font-body antialiased flex flex-col min-h-screen">
-        <SiteHeader />
-        <main className="flex-1">{children}</main>
-        <Toaster />
+      <body
+        suppressHydrationWarning
+        className={cn(
+          'font-body antialiased bg-muted/40',
+          alegreya.variable,
+          belleza.variable
+        )}
+      >
+        <AuthContextProvider>
+          <div className="relative flex min-h-screen flex-col">
+            <main className="flex-1 pb-20">
+              <div className="mx-auto max-w-md bg-background shadow-2xl flex flex-col flex-1 min-h-screen">
+                <Header />
+                <div className="flex-1">
+                  {children}
+                </div>
+              </div>
+            </main>
+            <BottomNav />
+            <Toaster />
+          </div>
+        </AuthContextProvider>
       </body>
     </html>
   );
