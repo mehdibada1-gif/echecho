@@ -1,0 +1,14 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Permissive rules for seeding
+    // WARNING: These rules allow anyone to read and write to your database.
+    // Use them ONLY for running the initial seed script.
+    // After seeding, switch back to the secure firestore.rules file.
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

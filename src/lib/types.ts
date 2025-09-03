@@ -12,7 +12,7 @@ export interface User {
   email: string;
   role: 'citizen' | 'ngo' | 'school' | 'municipality';
   country: string;
-  ecoPoints?: number;
+  ecoPoints: number;
   badges: string[];
   profileImage: string;
   ecoProfileDescription?: string;
@@ -93,3 +93,5 @@ export interface Chat {
     participants: { [key: string]: Pick<User, 'name' | 'profileImage'> };
     lastMessage: Message | null;
 }
+
+    

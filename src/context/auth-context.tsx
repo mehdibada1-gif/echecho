@@ -5,6 +5,8 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+import Header from '@/components/header';
+import BottomNav from '@/components/bottom-nav';
 
 type AuthContextType = {
   user: User | null;
@@ -37,23 +39,16 @@ export const AuthContextProvider = ({
 
   if (loading) {
     return (
-        <div className="flex flex-col min-h-screen">
-            <header className="sticky top-0 z-50 w-full border-b bg-card shadow-sm">
-                 <div className="container flex h-16 items-center">
-                    <Skeleton className="h-8 w-24" />
-                    <div className="hidden md:flex items-center space-x-6 text-sm font-medium ml-6">
-                        <Skeleton className="h-6 w-16" />
-                        <Skeleton className="h-6 w-16" />
-                        <Skeleton className="h-6 w-20" />
-                    </div>
-                    <div className="flex flex-1 items-center justify-end gap-4">
-                        <Skeleton className="h-10 w-24" />
-                    </div>
-                </div>
-            </header>
-            <main className="flex-1 container py-8">
-                 <Skeleton className="h-96 w-full" />
+        <div className="relative flex min-h-screen flex-col">
+           <main className="flex-1 pb-20">
+              <div className="mx-auto max-w-md bg-background shadow-2xl flex flex-col flex-1 min-h-screen">
+                <Header />
+                 <div className="flex-1 p-4">
+                    <Skeleton className="h-screen w-full" />
+                 </div>
+              </div>
             </main>
+            <BottomNav />
         </div>
     )
   }

@@ -63,7 +63,7 @@ export default function CreateEventPage() {
       date: formData.get('date') as string,
       endDate: formData.get('endDate') as string,
       cost: costType === 'free' ? 0 : cost,
-      beforePhotos: [formData.get('imageUrl') as string || 'https://picsum.photos/seed/eventplaceholder/400/300'],
+      beforePhotos: [formData.get('imageUrl') as string || `https://picsum.photos/seed/${new Date().getTime()}/400/300`],
       createdBy: authUser.uid,
       participants: [],
       impact: {},

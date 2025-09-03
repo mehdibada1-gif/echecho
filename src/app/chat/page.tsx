@@ -12,21 +12,28 @@ import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
 import { MessageSquare } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function ChatListPage() {
     const { user: authUser } = useAuth();
     const [chats, setChats] = React.useState<Chat[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
+    const [clientLoaded, setClientLoaded] = React.useState(false);
+
+    React.useEffect(() => {
+        setClientLoaded(true);
+    }, []);
 
     React.useEffect(() => {
         if (!authUser) return;
 
         setIsLoading(true);
         const chatsRef = collection(db, 'chats');
+        // The query was changed here to remove the orderBy clause that was causing the missing index error.
+        // Sorting is now handled on the client-side after data is fetched.
         const q = query(
             chatsRef, 
-            where('participantIds', 'array-contains', authUser.uid),
-            orderBy('lastMessage.createdAt', 'desc')
+            where('participantIds', 'array-contains', authUser.uid)
         );
 
         const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -41,7 +48,15 @@ export default function ChatListPage() {
                      } : null
                  } as Chat;
             });
-            setChats(chatsData);
+            
+            // Sort chats by last message date client-side
+            const sortedChats = chatsData.sort((a, b) => {
+                const dateA = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt).getTime() : 0;
+                const dateB = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt).getTime() : 0;
+                return dateB - dateA;
+            });
+
+            setChats(sortedChats);
             setIsLoading(false);
         }, (error) => {
             console.error("Error fetching chats:", error);
@@ -79,6 +94,7 @@ export default function ChatListPage() {
                                 const otherParticipantId = chat.participantIds.find(id => id !== authUser?.uid);
                                 if (!otherParticipantId) return null;
                                 const otherParticipant = chat.participants[otherParticipantId];
+                                const lastMessageDate = chat.lastMessage?.createdAt ? new Date(chat.lastMessage.createdAt) : null;
 
                                 return (
                                     <Link key={chat.id} href={`/chat/${chat.id}`} className="block hover:bg-muted/50 transition-colors">
@@ -90,9 +106,9 @@ export default function ChatListPage() {
                                             <div className="flex-grow">
                                                 <div className="flex justify-between items-center">
                                                     <p className="font-semibold">{otherParticipant?.name}</p>
-                                                    {chat.lastMessage?.createdAt && (
+                                                    {clientLoaded && lastMessageDate && (
                                                         <p className="text-xs text-muted-foreground">
-                                                            {formatDistanceToNow(chat.lastMessage.createdAt, { addSuffix: true })}
+                                                            {formatDistanceToNow(lastMessageDate, { addSuffix: true })}
                                                         </p>
                                                     )}
                                                 </div>

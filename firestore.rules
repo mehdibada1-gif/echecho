@@ -1,55 +1,59 @@
-
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-    
-    function isSignedIn() {
+    function isAuthenticated() {
       return request.auth != null;
     }
 
-    // USERS: Can read anyone's profile, but only write to their own.
+    function isOwner(docId) {
+      return request.auth.uid == docId;
+    }
+
+    function isResourceOwner(resource) {
+        return request.auth.uid == resource.data.createdBy;
+    }
+
     match /users/{userId} {
       allow read: if true;
-      allow write: if isOwner(userId);
+      allow create: if isAuthenticated() && isOwner(userId);
+      allow update: if isAuthenticated() && isOwner(userId);
     }
-    
-    // EVENTS: Anyone can read. Signed-in users can create. Only owners can update/delete.
-    // Any signed-in user can join an event by updating the participants list.
+
     match /events/{eventId} {
       allow read: if true;
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && (isOwner(resource.data.createdBy) || request.resource.data.participantsdiff(resource.data.participants).affectedKeys().hasOnly(['participants']));
-      allow delete: if isSignedIn() && isOwner(resource.data.createdBy);
+      allow create: if isAuthenticated() && isResourceOwner(request.resource);
+      // Allow update if user is creator OR if they are only joining (updating participants array)
+      allow update: if isAuthenticated() && (isResourceOwner(resource) || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participants']));
+      allow delete: if isAuthenticated() && isResourceOwner(resource);
     }
     
-    // BLOGS: Anyone can read. Signed-in users can create. Only owners can update/delete.
     match /blogs/{blogId} {
-        allow read: if true;
-        allow create: if isSignedIn();
-        allow update, delete: if isSignedIn() && isOwner(resource.data.createdBy);
+      allow read: if true;
+      allow create: if isAuthenticated() && isResourceOwner(request.resource);
+      allow update, delete: if isAuthenticated() && isResourceOwner(resource);
     }
     
-    // ORGANIZATIONS: Anyone can read. Signed-in users can create one. Only owners can update/delete.
     match /organizations/{orgId} {
-        allow read: if true;
-        allow create: if isSignedIn() && isOwner(request.resource.data.ownerId);
-        allow update, delete: if isSignedIn() && isOwner(resource.data.ownerId);
+      allow read: if true;
+      allow create, update: if isAuthenticated() && request.auth.uid == request.resource.data.ownerId;
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.ownerId;
+    }
+
+    match /chats/{chatId} {
+      // Allow read/write if user is a participant
+      allow read, create, update: if isAuthenticated() && request.auth.uid in resource.data.participantIds;
+      
+      match /messages/{messageId} {
+         // Allow read if user is a participant of the chat
+        allow read: if isAuthenticated() && get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds.hasAny([request.auth.uid]);
+        // Allow write if user is sender
+        allow create: if isAuthenticated() && request.auth.uid == request.resource.data.senderId;
+      }
     }
     
-    // CHATS: Only participants can read/write to a chat room and its messages.
-    match /chats/{chatId} {
-        allow read, create: if isSignedIn() && request.auth.uid in resource.data.participantIds;
-        allow update: if isSignedIn() && request.auth.uid in resource.data.participantIds;
-
-        match /messages/{messageId} {
-            allow read, create: if isSignedIn() && get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds.hasAny([request.auth.uid]);
-        }
-    }
+     match /event_participants/{docId} {
+        allow read, create: if isAuthenticated();
+     }
   }
 }

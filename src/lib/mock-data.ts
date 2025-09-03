@@ -1,5 +1,5 @@
 
-import type { Event, User, LeaderboardEntry, Testimonial, Blog } from './types';
+import type { Event, User, LeaderboardEntry, Testimonial, Blog, Organization } from './types';
 
 export const mockUsers: User[] = [
   {
@@ -135,7 +135,8 @@ export const mockBlogs: Blog[] = [
         category: 'Lifestyle',
         image: 'https://picsum.photos/seed/blog1/400/300',
         excerpt: 'Start making a difference with these easy-to-implement tips for a greener lifestyle. From your diet to your daily commute, small changes can have a big impact.',
-        author: 'Jane Doe',
+        author: 'Alice',
+        createdBy: 'user1',
         date: new Date('2024-07-28'),
         content: `
 <p>Reducing your carbon footprint is one of the most effective ways to combat climate change. While the challenge can seem daunting, making small, sustainable changes in your daily life can collectively make a huge difference. Here are ten simple yet powerful ways you can start today:</p>
@@ -160,7 +161,8 @@ export const mockBlogs: Blog[] = [
         category: 'Community',
         image: 'https://picsum.photos/seed/blog2/400/300',
         excerpt: 'Learn how to start a community garden in your neighborhood. This guide covers everything from finding a plot to organizing volunteers and choosing the right plants.',
-        author: 'John Smith',
+        author: 'Bob',
+        createdBy: 'user2',
         date: new Date('2024-07-25'),
         content: `
 <h2>Why Start a Community Garden?</h2>
@@ -188,7 +190,8 @@ export const mockBlogs: Blog[] = [
         category: 'Education',
         image: 'https://picsum.photos/seed/blog3/400/300',
         excerpt: 'What is the circular economy and why is it crucial for a sustainable future? We break down the key concepts and show how you can participate.',
-        author: 'EcoEcho Team',
+        author: 'Alice',
+        createdBy: 'user1',
         date: new Date('2024-07-22'),
         content: `
 <h2>From Linear to Circular</h2>
@@ -211,6 +214,14 @@ export const mockBlogs: Blog[] = [
 <p>By embracing these principles, we can collectively build a more sustainable and resilient future for everyone.</p>
 `
     }
-]
+];
 
-    
+export const mockOrganizations: Organization[] = [
+    {
+        id: 'user1', // Org ID is the same as the owner's ID for simplicity in this mock data
+        name: 'Green Italia',
+        description: 'A non-profit dedicated to promoting green initiatives across Italy.',
+        website: 'https://green-italia.example.com',
+        ownerId: 'user1',
+    }
+];

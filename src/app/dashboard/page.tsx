@@ -73,7 +73,7 @@ const EditEventDialog = ({ event, onEventUpdate, children }: { event: Event, onE
             date: Timestamp.fromDate(new Date(date)),
             endDate: Timestamp.fromDate(new Date(endDate)),
             cost: costType === 'free' ? 0 : cost,
-            beforePhotos: [imageUrl || 'https://picsum.photos/seed/eventplaceholder/400/300'],
+            beforePhotos: [imageUrl || `https://picsum.photos/seed/${new Date().getTime()}/400/300`],
         };
         try {
             const eventDocRef = doc(db, 'events', event.id);
@@ -464,6 +464,7 @@ const OrganizationDialog = ({ organization, userId, onUpdate }: { organization: 
                 title: "Organization Deleted",
                 description: "Your organization has been removed.",
             });
+            setIsOpen(false);
         } catch (error) {
             toast({
                 variant: 'destructive',
@@ -539,7 +540,7 @@ const OrganizationDialog = ({ organization, userId, onUpdate }: { organization: 
 }
 
 export default function DashboardPage() {
-    const { user: authUser, loading: authLoading } = useAuth();
+    const { user: authUser, loading: authLoading }_class = useAuth();
     const router = useRouter();
     const { toast } = useToast();
 
@@ -557,21 +558,33 @@ export default function DashboardPage() {
             const userDoc = await getDoc(doc(db, 'users', uid));
             if (userDoc.exists()) {
                 setUser({ id: userDoc.id, ...userDoc.data() } as AppUser);
+            } else {
+                if (authUser) {
+                    const newUser: Omit<AppUser, 'id'> = {
+                        name: authUser.displayName || 'New User',
+                        email: authUser.email || '',
+                        role: 'citizen',
+                        country: '',
+                        ecoPoints: 0,
+                        badges: [],
+                        profileImage: authUser.photoURL || `https://picsum.photos/seed/${authUser.uid}/100/100`,
+                        contributions: '',
+                        ecoProfileDescription: '',
+                    };
+                    await setDoc(doc(db, 'users', authUser.uid), newUser);
+                    setUser({ id: authUser.uid, ...newUser });
+                }
             }
 
+
             // Fetch Organization
-            const orgDoc = await getDoc(doc(db, 'organizations', uid));
-            if (orgDoc.exists()) {
-                setOrganization({ id: orgDoc.id, ...orgDoc.data() } as Organization);
+            const orgsQuery = query(collection(db, 'organizations'), where('ownerId', '==', uid));
+            const orgsSnapshot = await getDocs(orgsQuery);
+            if (!orgsSnapshot.empty) {
+                const orgDocSnapshot = orgsSnapshot.docs[0];
+                setOrganization({ id: orgDocSnapshot.id, ...orgDocSnapshot.data() } as Organization);
             } else {
-                 const orgsQuery = query(collection(db, 'organizations'), where('ownerId', '==', uid));
-                 const orgsSnapshot = await getDocs(orgsQuery);
-                 if (!orgsSnapshot.empty) {
-                     const orgDocSnapshot = orgsSnapshot.docs[0];
-                     setOrganization({ id: orgDocSnapshot.id, ...orgDocSnapshot.data() } as Organization);
-                 } else {
-                    setOrganization(null);
-                 }
+               setOrganization(null);
             }
             
             // Fetch Created Events
@@ -582,8 +595,8 @@ export default function DashboardPage() {
                 return {
                     id: d.id, 
                     ...data, 
-                    date: data.date && data.date.toDate ? data.date.toDate() : new Date(), 
-                    endDate: data.endDate && data.endDate.toDate ? data.endDate.toDate() : new Date() 
+                    date: data.date?.toDate ? data.date.toDate() : new Date(), 
+                    endDate: data.endDate?.toDate ? data.endDate.toDate() : new Date() 
                 } as Event
             }));
 
@@ -595,8 +608,8 @@ export default function DashboardPage() {
                 return {
                     id: d.id, 
                     ...data, 
-                    date: data.date && data.date.toDate ? data.date.toDate() : new Date(), 
-                    endDate: data.endDate && data.endDate.toDate ? data.endDate.toDate() : new Date() 
+                    date: data.date?.toDate ? data.date.toDate() : new Date(), 
+                    endDate: data.endDate?.toDate ? data.endDate.toDate() : new Date() 
                 } as Event
             }));
 
@@ -605,7 +618,7 @@ export default function DashboardPage() {
             const articlesSnapshot = await getDocs(articlesQuery);
             setUserArticles(articlesSnapshot.docs.map(d => {
                 const data = d.data();
-                return { id: d.id, ...data, date: data.date && data.date.toDate ? data.date.toDate() : new Date() } as Blog
+                return { id: d.id, ...data, date: data.date?.toDate ? data.date.toDate() : new Date() } as Blog
             }));
 
         } catch (error) {
@@ -614,7 +627,7 @@ export default function DashboardPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [toast]);
+    }, [toast, authUser]);
 
     React.useEffect(() => {
         if (!authLoading && !authUser) {
@@ -716,21 +729,21 @@ export default function DashboardPage() {
       </Card>
       
       <Card>
-          <CardHeader>
-              <CardTitle className="text-2xl font-headline flex items-center"><Users className="mr-2" />My Events</CardTitle>
-              <CardDescription>Manage your created and joined events.</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+             <div>
+                 <CardTitle className="text-2xl font-headline flex items-center"><Users className="mr-2" />My Events</CardTitle>
+                 <CardDescription>Manage your created and joined events.</CardDescription>
+             </div>
+             <Button asChild size="sm">
+                <Link href="/create-event">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Create Event
+                </Link>
+            </Button>
           </CardHeader>
           <CardContent className="space-y-6">
               <div>
-                  <div className="flex justify-between items-center mb-4">
-                      <h3 className="text-xl font-headline">Created ({createdEvents.length})</h3>
-                       <Button asChild size="sm">
-                          <Link href="/create-event">
-                              <PlusCircle className="mr-2 h-4 w-4" />
-                              Create Event
-                          </Link>
-                      </Button>
-                  </div>
+                  <h3 className="text-xl font-headline mb-4">Created ({createdEvents.length})</h3>
                    {createdEvents.length > 0 ? (
                       <div className="space-y-4">
                          {createdEvents.map(event => <EventListItem key={event.id} event={event} authUser={user} onDelete={handleEventDelete} onUpdate={handleEventUpdate}/>)}
@@ -764,20 +777,19 @@ export default function DashboardPage() {
       </Card>
 
       <Card>
-          <CardHeader>
-              <CardTitle className="text-2xl font-headline flex items-center"><FileText className="mr-2" />My Articles</CardTitle>
-              <CardDescription>Manage your published articles.</CardDescription>
+           <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                  <CardTitle className="text-2xl font-headline flex items-center"><FileText className="mr-2" />My Articles</CardTitle>
+                  <CardDescription>Manage your published articles.</CardDescription>
+              </div>
+               <Button asChild size="sm">
+                  <Link href="/create-article">
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Create Article
+                  </Link>
+              </Button>
           </CardHeader>
           <CardContent className="space-y-6">
-              <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-headline">Published ({userArticles.length})</h3>
-                   <Button asChild size="sm">
-                      <Link href="/create-article">
-                          <PlusCircle className="mr-2 h-4 w-4" />
-                          Create Article
-                      </Link>
-                  </Button>
-              </div>
               {userArticles.length > 0 ? (
                   <div className="space-y-4">
                      {userArticles.map(article => <ArticleListItem key={article.id} article={article} authUser={user} onUpdate={handleArticleUpdate} onDelete={() => handleArticleDelete(article.id, article.title)} />)}

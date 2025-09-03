@@ -8,7 +8,7 @@ import { mockBlogs } from '@/lib/mock-data';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, limit, orderBy, query, Timestamp, where } from 'firebase/firestore';
+import { collection, getDocs, limit, orderBy, query, Timestamp } from 'firebase/firestore';
 import type { Event } from '@/lib/types';
 import { Carousel, CarouselContent, CarouselItem } from '@/components/ui/carousel';
 
@@ -18,12 +18,11 @@ async function getRecentEvents() {
     const eventsCollection = collection(db, 'events');
     const q = query(
       eventsCollection,
-      where('date', '>=', Timestamp.now()),
-      orderBy('date', 'asc'), 
-      limit(5)
+      orderBy('date', 'desc'), 
+      limit(20)
     );
     const querySnapshot = await getDocs(q);
-    const eventsData = querySnapshot.docs.map(doc => {
+    const allRecentEvents = querySnapshot.docs.map(doc => {
       const data = doc.data();
       return {
         id: doc.id,
@@ -32,16 +31,49 @@ async function getRecentEvents() {
         endDate: data.endDate && data.endDate instanceof Timestamp ? data.endDate.toDate() : new Date(),
       } as Event;
     });
-    return eventsData;
+
+    const upcomingEvents = allRecentEvents
+      .filter(event => (event.date as Date) >= new Date())
+      .sort((a, b) => (a.date as Date).getTime() - (b.date as Date).getTime())
+      .slice(0, 5); 
+
+    return upcomingEvents;
   } catch (error) {
     console.error("Error fetching recent events: ", error);
     return [];
   }
 }
 
+async function getImpactStats() {
+  try {
+    const [usersSnapshot, eventsSnapshot] = await Promise.all([
+      getDocs(collection(db, 'users')),
+      getDocs(collection(db, 'events')),
+    ]);
+
+    const events = eventsSnapshot.docs.map(doc => doc.data() as Event);
+    const totalParticipants = events.reduce((sum, event) => sum + (event.participants?.length || 0), 0);
+
+    return {
+      totalUsers: usersSnapshot.size,
+      totalEvents: eventsSnapshot.size,
+      totalParticipants,
+    };
+  } catch (error) {
+    console.error("Error fetching impact stats:", error);
+    return {
+      totalUsers: 0,
+      totalEvents: 0,
+      totalParticipants: 0,
+    };
+  }
+}
+
+
 export default async function Home() {
 
   const recentEvents = await getRecentEvents();
+  const impactStats = await getImpactStats();
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -50,11 +82,11 @@ export default async function Home() {
           <div className="flex flex-col justify-center space-y-4">
             <div className="space-y-2 text-center">
                <Image
-                  src="https://picsum.photos/seed/ecohero/600/400"
+                  src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTfQgj-XqK3O-BJlAoAitUf7b3XWx4cuA9rNA&s"
                   width="600"
                   height="400"
                   alt="Hero"
-                  data-ai-hint="community nature"
+                  data-ai-hint="green environment"
                   className="mx-auto aspect-video overflow-hidden rounded-xl object-cover"
                 />
               <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl font-headline text-primary mt-4">
@@ -92,13 +124,13 @@ export default async function Home() {
                 <Carousel 
                     opts={{
                         align: "start",
-                        loop: true,
+                        loop: recentEvents.length > 1,
                     }}
                     className="w-full"
                 >
                     <CarouselContent className="-ml-4">
                         {recentEvents.map((event) => (
-                            <CarouselItem key={event.id} className="pl-4">
+                            <CarouselItem key={event.id} className="pl-4 md:basis-1/2 lg:basis-1/3">
                                <Card className="flex flex-col h-full">
                                     <div className="relative h-48 w-full">
                                         <Image
@@ -161,25 +193,27 @@ export default async function Home() {
           <div className="mx-auto w-full max-w-4xl">
             <div className="grid grid-cols-2 gap-4">
               <Card className="flex flex-col items-center justify-center p-4">
-                <Sprout className="h-8 w-8 text-primary mb-2" />
-                <p className="text-2xl font-bold">10,832</p>
-                <p className="text-xs text-foreground/70 text-center">Trees Planted</p>
-              </Card>
-              <Card className="flex flex-col items-center justify-center p-4">
-                <Recycle className="h-8 w-8 text-primary mb-2" />
-                <p className="text-2xl font-bold">5,214 kg</p>
-                <p className="text-xs text-foreground/70 text-center">Waste Recycled</p>
-              </Card>
-              <Card className="flex flex-col items-center justify-center p-4">
                 <Users className="h-8 w-8 text-primary mb-2" />
-                <p className="text-2xl font-bold">1,500+</p>
-                <p className="text-xs text-foreground/70 text-center">Volunteers</p>
+                <p className="text-2xl font-bold">{impactStats.totalUsers}</p>
+                <p className="text-xs text-foreground/70 text-center">Users</p>
               </Card>
-              <Card className="flex flex-col items-center justify-center p-4 bg-accent text-accent-foreground">
-                <Leaf className="h-8 w-8 mb-2" />
-                <p className="text-2xl font-bold">Ready?</p>
-                <p className="text-xs text-center">Join Now!</p>
+              <Card className="flex flex-col items-center justify-center p-4">
+                <Calendar className="h-8 w-8 text-primary mb-2" />
+                <p className="text-2xl font-bold">{impactStats.totalEvents}</p>
+                <p className="text-xs text-foreground/70 text-center">Events</p>
               </Card>
+              <Card className="flex flex-col items-center justify-center p-4">
+                <Sprout className="h-8 w-8 text-primary mb-2" />
+                <p className="text-2xl font-bold">{impactStats.totalParticipants}</p>
+                <p className="text-xs text-foreground/70 text-center">Participants</p>
+              </Card>
+              <Link href="/signup">
+                <Card className="flex flex-col items-center justify-center p-4 bg-accent text-accent-foreground h-full hover:bg-accent/90 transition-colors">
+                  <Leaf className="h-8 w-8 mb-2" />
+                  <p className="text-2xl font-bold">Ready?</p>
+                  <p className="text-xs text-center">Join Now!</p>
+                </Card>
+              </Link>
             </div>
           </div>
         </div>
@@ -197,7 +231,7 @@ export default async function Home() {
               </p>
             </div>
           </div>
-          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 py-12">
+          <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 py-12 sm:grid-cols-2">
             {mockBlogs.slice(0,2).map((post) => (
               <Card key={post.id} className="flex flex-col overflow-hidden">
                  <div className="relative h-48 w-full">

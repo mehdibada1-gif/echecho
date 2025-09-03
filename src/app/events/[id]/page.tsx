@@ -3,17 +3,17 @@
 
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getCountryName } from '@/data/countries';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format } from 'date-fns';
-import { Calendar, MapPin, Users, ArrowLeft, Leaf, Recycle, Sprout, Sparkles, Loader2, Tag, DollarSign, Clock } from 'lucide-react';
+import { Calendar, MapPin, Users, ArrowLeft, Leaf, Recycle, Sprout, Sparkles, Loader2, DollarSign, Clock } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound, useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import type { Event, User as AppUser } from '@/lib/types';
-import { doc, getDoc, updateDoc, arrayUnion, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/context/auth-context';
@@ -28,8 +28,9 @@ const categoryIcons: { [key: string]: React.ReactElement } = {
 };
 
 const getCategoryIcon = (category: string) => {
-    const icon = categoryIcons[category.toLowerCase()];
-    return icon ? React.cloneElement(icon, { className: "h-5 w-5 text-primary" }) : <Leaf className="h-5 w-5 text-primary" />;
+    const lowerCategory = category.toLowerCase();
+    const icon = Object.keys(categoryIcons).find(key => lowerCategory.includes(key));
+    return icon ? React.cloneElement(categoryIcons[icon], { className: "h-5 w-5 text-primary" }) : <Leaf className="h-5 w-5 text-primary" />;
 }
 
 export default function EventDetailPage({ params }: { params: { id: string } }) {
@@ -101,57 +102,47 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
     }
   }, [params.id, fetchEventData]);
   
-  const handleJoin = async () => {
+  const handleJoinLeave = async () => {
     if (!event || !authUser) {
       toast({
         variant: 'destructive',
         title: 'Not Logged In',
-        description: 'You must be logged in to join an event.',
+        description: 'You must be logged in to join or leave an event.',
       });
       router.push('/login');
       return;
     }
     setIsJoining(true);
+
+    const eventDocRef = doc(db, 'events', event.id);
+    const hasJoined = event.participants.includes(authUser.uid);
     
     try {
-        const participantsRef = collection(db, 'event_participants');
-        const q = query(participantsRef, where('eventId', '==', event.id), where('userId', '==', authUser.uid));
-        const querySnapshot = await getDocs(q);
-
-        if (!querySnapshot.empty) {
-            toast({
-                variant: 'destructive',
-                title: "Already Joined",
-                description: "You have already joined this initiative.",
+        if (hasJoined) {
+            await updateDoc(eventDocRef, {
+                participants: arrayRemove(authUser.uid)
             });
-            return;
+            toast({
+                title: "Successfully left",
+                description: `You have left the event: ${event.title}`,
+            });
+        } else {
+             await updateDoc(eventDocRef, {
+                participants: arrayUnion(authUser.uid)
+            });
+            toast({
+                title: "Successfully joined!",
+                description: `You have joined the event: ${event.title}`,
+            });
         }
-
-        // Add to event_participants collection
-        await addDoc(participantsRef, {
-            eventId: event.id,
-            userId: authUser.uid,
-        });
-
-        // Add to participants array in event doc
-        const eventDocRef = doc(db, 'events', event.id);
-        await updateDoc(eventDocRef, {
-            participants: arrayUnion(authUser.uid)
-        });
-
-        // Re-fetch event data to update UI
+        
         await fetchEventData(event.id);
-
-        toast({
-            title: "Successfully joined!",
-            description: `You have joined the event: ${event.title}`,
-        });
 
     } catch (error: any) {
          toast({
             variant: 'destructive',
-            title: "Error joining event",
-            description: `There was an issue joining the event. Please try again. ${error.message}`,
+            title: `Error ${hasJoined ? 'leaving' : 'joining'} event`,
+            description: `There was an issue. Please try again. ${error.message}`,
         });
     } finally {
         setIsJoining(false);
@@ -265,13 +256,13 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
                         {participants.length > 0 ? (
                             <div className="flex flex-wrap gap-4">
                                 {participants.map((p) => (
-                                    <div key={p.id} className="flex items-center gap-2">
+                                    <Link key={p.id} href={`/profile/${p.id}`} className="flex items-center gap-2 hover:bg-muted p-2 rounded-md transition-colors">
                                         <Avatar title={p.name}>
                                             <AvatarImage src={p.profileImage} alt={p.name} />
                                             <AvatarFallback>{p.name.charAt(0).toUpperCase()}</AvatarFallback>
                                         </Avatar>
                                         <span>{p.name}</span>
-                                    </div>
+                                    </Link>
                                 ))}
                             </div>
                         ): (
@@ -329,7 +320,7 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
                         <CardTitle className="font-headline text-2xl">Organizer</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex items-center gap-4">
+                         <Link href={`/profile/${organizer.id}`} className="flex items-center gap-4 hover:bg-muted p-2 rounded-md transition-colors -m-2">
                             <Avatar className="h-16 w-16">
                                 <AvatarImage src={organizer.profileImage} alt={organizer.name} />
                                 <AvatarFallback>{organizer.name.charAt(0)}</AvatarFallback>
@@ -338,12 +329,22 @@ export default function EventDetailPage({ params }: { params: { id: string } }) 
                                 <p className="font-bold text-xl">{organizer.name}</p>
                                 <p className="text-muted-foreground">Community Leader</p>
                             </div>
-                        </div>
+                        </Link>
                     </CardContent>
                 </Card>}
-                <Button size="lg" className="w-full bg-accent hover:bg-accent/90 text-lg py-6" onClick={handleJoin} disabled={isJoining || hasJoined || (authUser && event.createdBy === authUser.uid)}>
+                 <Button 
+                    size="lg" 
+                    className="w-full text-lg py-6" 
+                    onClick={handleJoinLeave} 
+                    disabled={isJoining || (authUser && event.createdBy === authUser.uid)}
+                    variant={hasJoined ? "outline" : "default"}
+                    >
                     {isJoining && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {authUser && event.createdBy === authUser.uid ? 'You are the organizer' : hasJoined ? 'You have joined' : isJoining ? 'Joining...' : 'Join this Initiative'}
+                    {authUser && event.createdBy === authUser.uid 
+                        ? 'You are the organizer' 
+                        : hasJoined 
+                        ? (isJoining ? 'Leaving...' : 'Leave Initiative')
+                        : (isJoining ? 'Joining...' : 'Join this Initiative')}
                 </Button>
             </div>
         </div>

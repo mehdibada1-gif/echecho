@@ -46,7 +46,6 @@ export default function SignUpPage() {
 
       // Create a user document in Firestore
       await setDoc(doc(db, 'users', user.uid), {
-        id: user.uid,
         name: name,
         email: user.email,
         role: 'citizen',
@@ -89,8 +88,7 @@ export default function SignUpPage() {
         <CardContent>
           <form className="space-y-6" onSubmit={handleSubmit}>
              <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input
+              <Label htmlFor="name">Full Name</Label>              <Input
                 id="name"
                 name="name"
                 type="text"
@@ -149,3 +147,5 @@ export default function SignUpPage() {
     </div>
   );
 }
+
+    

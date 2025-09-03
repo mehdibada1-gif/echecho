@@ -1,6 +1,4 @@
 
-'use client';
-
 import * as React from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -8,15 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCountryName } from "@/data/countries";
 import { db } from "@/lib/firebase";
-import { Event, User, Chat } from "@/lib/types";
-import { collection, doc, getDoc, getDocs, query, where, addDoc, serverTimestamp } from "firebase/firestore";
+import { Event, User } from "@/lib/types";
+import { collection, doc, getDoc, getDocs, query, where, Timestamp } from "firebase/firestore";
 import { format } from "date-fns";
-import { ArrowLeft, Building, Calendar, Globe, Mail, MapPin, Sprout, MessageSquare, Loader2 } from "lucide-react";
+import { ArrowLeft, Calendar, Mail, MapPin, Sprout } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { notFound, useRouter } from "next/navigation";
-import { useAuth } from "@/context/auth-context";
-import { Skeleton } from "@/components/ui/skeleton";
+import { notFound } from "next/navigation";
+import { SendMessageButton } from './send-message-button';
 
 async function getUserData(id: string) {
     const userDocRef = doc(db, 'users', id);
@@ -33,8 +30,8 @@ async function getUserData(id: string) {
         return { 
             id: d.id, 
             ...data, 
-            date: data.date.toDate(),
-            endDate: data.endDate.toDate()
+            date: data.date instanceof Timestamp ? data.date.toDate() : new Date(),
+            endDate: data.endDate instanceof Timestamp ? data.endDate.toDate() : new Date(),
         } as Event;
     });
 
@@ -45,78 +42,10 @@ async function getUserData(id: string) {
 }
 
 
-export default function ProfilePage({ params }: { params: { id: string } }) {
-    const { user: authUser, loading: authLoading } = useAuth();
-    const router = useRouter();
-    const [userData, setUserData] = React.useState<{user: User, createdEvents: Event[]} | null>(null);
-    const [isLoading, setIsLoading] = React.useState(true);
-    const [isCreatingChat, setIsCreatingChat] = React.useState(false);
-
-    React.useEffect(() => {
-        const fetchData = async () => {
-            setIsLoading(true);
-            const data = await getUserData(params.id);
-            setUserData(data);
-            setIsLoading(false);
-        };
-        fetchData();
-    }, [params.id]);
+export default async function ProfilePage({ params }: { params: { id: string } }) {
     
-    const handleSendMessage = async () => {
-        if (!authUser || !userData?.user) return;
-        setIsCreatingChat(true);
-
-        try {
-            // Check if a chat already exists
-            const chatsRef = collection(db, 'chats');
-            const q = query(chatsRef, where('participantIds', 'array-contains', authUser.uid));
-            const querySnapshot = await getDocs(q);
-
-            let existingChat: Chat | null = null;
-            querySnapshot.forEach(doc => {
-                const chat = doc.data() as Chat;
-                if (chat.participantIds.includes(userData.user.id)) {
-                    existingChat = { id: doc.id, ...chat };
-                }
-            });
-
-            if (existingChat) {
-                router.push(`/chat/${existingChat.id}`);
-            } else {
-                // Create a new chat
-                const authUserDoc = await getDoc(doc(db, 'users', authUser.uid));
-                if (!authUserDoc.exists()) throw new Error("Could not find current user data");
-                const authUserData = authUserDoc.data() as User;
-                
-                const newChatRef = await addDoc(collection(db, 'chats'), {
-                    participantIds: [authUser.uid, userData.user.id],
-                    participants: {
-                        [authUser.uid]: {
-                            name: authUserData.name,
-                            profileImage: authUserData.profileImage
-                        },
-                        [userData.user.id]: {
-                            name: userData.user.name,
-                            profileImage: userData.user.profileImage
-                        }
-                    },
-                    lastMessage: null,
-                    createdAt: serverTimestamp()
-                });
-                router.push(`/chat/${newChatRef.id}`);
-            }
-
-        } catch (error) {
-            console.error("Error creating or finding chat:", error);
-        } finally {
-            setIsCreatingChat(false);
-        }
-    };
-
-    if (isLoading || authLoading) {
-        return <div className="container mx-auto p-4 space-y-8"><Skeleton className="w-full h-screen" /></div>
-    }
-
+    const userData = await getUserData(params.id);
+    
     if (!userData) {
         notFound();
     }
@@ -147,12 +76,7 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
                                 <p className="flex items-center text-muted-foreground"><MapPin className="mr-2 h-4 w-4" />{getCountryName(user.country)}</p>
                             </div>
                         </div>
-                        {authUser && authUser.uid !== user.id && (
-                             <Button onClick={handleSendMessage} disabled={isCreatingChat}>
-                                {isCreatingChat ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageSquare className="mr-2 h-4 w-4" />}
-                                {isCreatingChat ? 'Starting Chat...' : 'Send Message'}
-                            </Button>
-                        )}
+                        <SendMessageButton targetUser={user} />
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -207,3 +131,5 @@ export default function ProfilePage({ params }: { params: { id: string } }) {
         </div>
     )
 }
+
+    
