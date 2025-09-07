@@ -59,7 +59,14 @@ const generateEcoProfileDescriptionFlow = ai.defineFlow(
     outputSchema: GenerateEcoProfileDescriptionOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    try {
+        const {output} = await prompt(input);
+        return output!;
+    } catch (error) {
+        console.error("Error generating eco profile description:", error);
+        return {
+            description: `A dedicated eco-warrior from ${input.country}, making a positive impact on the planet through various contributions.`
+        }
+    }
   }
 );

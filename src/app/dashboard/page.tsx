@@ -540,7 +540,7 @@ const OrganizationDialog = ({ organization, userId, onUpdate }: { organization: 
 }
 
 export default function DashboardPage() {
-    const { user: authUser, loading: authLoading }_class = useAuth();
+    const { user: authUser, loading: authLoading } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
 
@@ -837,5 +837,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-    
