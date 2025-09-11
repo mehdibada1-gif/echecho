@@ -8,6 +8,9 @@ The app's main feature is a real-time, geo-based map that allows users to discov
 
 By unifying these scattered efforts, EchoCho transforms disconnected, local actions into a powerful, collective movement. It provides a simple, engaging, and measurable way for communities to organize, collaborate, and see the real-world results of their sustainability work. The app not only increases civic engagement but also strengthens local environmental networks, making it easier for everyone to contribute to a greener future.
 
+Funded by the European Union. Views and opinions expressed are however those of the author(s) only and do not necessarily reflect those of the European Union or the European Education and Culture Executive Agency (EACEA). Neither the European Union nor EACEA can be held responsible for them.
+
+
+
 DEMO
-Link 
 https://echecho-kecl.vercel.app/
